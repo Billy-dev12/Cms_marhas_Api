@@ -10,12 +10,12 @@ class ModalSliderController extends Controller
 {
     public function index()
     {
-        return response()->json(ModalSlider::where('is_active', true)->orderBy('order')->get());
+        return response()->json(ModalSlider::with('image')->where('is_active', true)->orderBy('order')->get());
     }
 
     public function show($id)
     {
-        return response()->json(ModalSlider::findOrFail($id));
+        return response()->json(ModalSlider::with('image')->findOrFail($id));
     }
 
     public function store(Request $request)
@@ -35,7 +35,7 @@ class ModalSliderController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('modal-sliders', 'public');
             $modalSlider->image()->create([
-                'file_path' => 'storage/' . $path
+                'file_path' => $path
             ]);
         }
 
@@ -58,7 +58,7 @@ class ModalSliderController extends Controller
             $modalSlider->image()->updateOrCreate(
                 [],
                 [
-                    'file_path' => 'storage/' . $path
+                    'file_path' => $path
                 ]
             );
         }

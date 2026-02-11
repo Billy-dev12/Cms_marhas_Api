@@ -10,13 +10,18 @@ class ProfileController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Profile::query()->with('media');
-
-        if ($request->has('type')) {
-            $query->where('type', $request->type);
+        if (!$request->has('type')) {
+            $availableTypes = Profile::select('type')->distinct()->pluck('type');
+            return response()->json([
+                'message' => 'Parameter "type" wajib diisi. Silakan gunakan query parameter ?type={tipe} untuk mengambil data spesifik.',
+                'available_types' => $availableTypes,
+                'contoh' => '/api/profile?type=sambutan',
+                'alternatif' => '/api/profile/{type} (contoh: /api/profile/sambutan)',
+            ], 422);
         }
 
-        return response()->json($query->get());
+        $profiles = Profile::where('type', $request->type)->with('media')->get();
+        return response()->json($profiles);
     }
 
     public function profileSekolah()
@@ -47,7 +52,7 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'type' => 'required|in:sambutan,sejarah,visi_misi,sarana,kurikulum,kontak,profil,struktur,ekstrakurikuler,mitra',
+            'type' => 'required|in:sambutan,sejarah,visi_misi,sarana,kurikulum,kontak,profil,struktur,ekstrakurikuler,mitra,bmw',
             'content' => 'required|string',
             'extras' => 'nullable|array',
             'image' => 'nullable|image|max:2048',
@@ -73,7 +78,7 @@ class ProfileController extends Controller
         // Note: For file uploads with PUT, use POST with _method=PUT
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'type' => 'sometimes|required|in:sambutan,sejarah,visi_misi,sarana,kurikulum,kontak,profil,struktur,ekstrakurikuler,mitra',
+            'type' => 'sometimes|required|in:sambutan,sejarah,visi_misi,sarana,kurikulum,kontak,profil,struktur,ekstrakurikuler,mitra,bmw',
             'content' => 'sometimes|required|string',
             'extras' => 'nullable|array',
             'image' => 'nullable|image|max:2048',

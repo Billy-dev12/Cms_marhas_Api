@@ -12,7 +12,7 @@ class MediaController extends Controller
         try {
             $validated = $request->validate([
                 'file' => 'required|image|max:2048',
-                'model_type' => 'required|string|in:profile,kejuruan,news,gallery,achievement,slider',
+                'model_type' => 'required|string|in:profile,kejuruan,news,gallery,achievement,slider,hero_card,mitra,ekstrakurikuler,modal_slider',
                 'model_id' => 'required|integer',
             ]);
 
@@ -24,35 +24,59 @@ class MediaController extends Controller
                 'gallery' => \App\Models\Gallery::class,
                 'achievement' => \App\Models\Achievement::class,
                 'slider' => \App\Models\Slider::class,
+                'hero_card' => \App\Models\HeroCard::class,
+                'mitra' => \App\Models\Mitra::class,
+                'ekstrakurikuler' => \App\Models\Profile::class, // Ekstra is a Profile
+                'modal_slider' => \App\Models\ModalSlider::class,
             ];
 
             $modelClass = $modelMap[$validated['model_type']];
             $record = $modelClass::findOrFail($validated['model_id']);
 
             // Handle File Upload
-            $folder = \Illuminate\Support\Str::plural($validated['model_type']); // e.g., 'profiles', 'news'
+            $folder = \Illuminate\Support\Str::plural($validated['model_type']);
             $path = $request->file('file')->store($folder, 'public');
 
-            // Check if model has 'media' relationship (morphMany) or 'image' (morphOne)
-// Most of your models seem to use 'media' or 'image' which returns a morph relation.
-// We need to be careful: does the user want to REPLACE the existing image or ADD to it?
-// For Gallery, it's likely ADD. For Profile/Kejuruan, it's likely REPLACE (single image).
+            // Force replace for everything EXCEPT Gallery (which adds)
+            // Gallery is strictly for adding multiple images
+            $forceReplaceTypes = [
+                'profile',
+                'kejuruan',
+                'news',
+                'achievement',
+                'slider',
+                'hero_card',
+                'mitra',
+                'ekstrakurikuler',
+                'modal_slider'
+            ];
 
-            $isSingleImage = in_array($validated['model_type'], ['profile', 'kejuruan', 'news', 'achievement', 'slider']);
+            $isSingleImage = in_array($validated['model_type'], $forceReplaceTypes);
 
             if ($isSingleImage) {
-                // Delete old image if exists
-                if ($record->media()->exists()) {
-                    $oldMedia = $record->media()->first();
-                    if (Storage::disk('public')->exists($oldMedia->file_path)) {
-                        Storage::disk('public')->delete($oldMedia->file_path);
+                // Determine relationship name: 'media' (morphMany) vs 'image' (morphOne)
+                $relationName = method_exists($record, 'media') ? 'media' : 'image';
+
+                // Get query builder
+                $query = $record->{$relationName}();
+
+                // Delete old image(s) if exists
+                if ($query->exists()) {
+                    // Treat as collection to handle both morphOne and morphMany consistently
+                    $oldMedias = $query->get(); // get() works for both One and Many relations builders
+                    foreach ($oldMedias as $oldMedia) {
+                        if (Storage::disk('public')->exists($oldMedia->file_path)) {
+                            Storage::disk('public')->delete($oldMedia->file_path);
+                        }
+                        $oldMedia->delete();
                     }
-                    $oldMedia->delete();
                 }
+
                 // Create new
-                $media = $record->media()->create(['file_path' => $path]);
+                // For morphOne, create() works. For morphMany, create() works.
+                $media = $record->{$relationName}()->create(['file_path' => $path]);
             } else {
-                // For Gallery (multiple images), just add
+                // For Gallery (multiple images), just add. Assumes 'morphMany' named 'media'
                 $media = $record->media()->create(['file_path' => $path]);
             }
 

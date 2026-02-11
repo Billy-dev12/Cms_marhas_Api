@@ -8,9 +8,15 @@ use Illuminate\Http\Request;
 
 class SliderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Slider::with('image')->where('is_active', true)->get());
+        $query = Slider::with('image');
+
+        if (!$request->has('all')) {
+            $query->where('is_active', true);
+        }
+
+        return response()->json($query->get());
     }
 
     public function show($id)

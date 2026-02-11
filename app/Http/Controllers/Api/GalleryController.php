@@ -27,20 +27,24 @@ class GalleryController extends Controller
             'images.*' => 'image|max:2048', // Validate items if array
         ]);
 
+        \Illuminate\Support\Facades\Log::info('Gallery store started', ['title' => $validated['title']]);
         $gallery = Gallery::create($validated);
 
         if ($request->hasFile('images')) {
             $images = $request->file('images');
-            // Normalize to array if it's a single file
+            \Illuminate\Support\Facades\Log::info('Processing gallery images', ['count' => count($images)]);
+
             if (!is_array($images)) {
                 $images = [$images];
             }
 
-            foreach ($images as $file) {
+            foreach ($images as $index => $file) {
+                \Illuminate\Support\Facades\Log::info("Uploading gallery image $index", ['name' => $file->getClientOriginalName()]);
                 $path = $file->store('galleries', 'public');
                 $gallery->media()->create(['file_path' => $path]);
             }
         }
+        \Illuminate\Support\Facades\Log::info('Gallery store completed');
 
         return response()->json([
             'message' => 'Gallery created successfully',

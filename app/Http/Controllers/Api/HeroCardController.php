@@ -11,12 +11,12 @@ class HeroCardController extends Controller
 {
     public function index()
     {
-        return response()->json(HeroCard::orderBy('order')->get());
+        return response()->json(HeroCard::with('image')->orderBy('order')->get());
     }
 
     public function show($id)
     {
-        return response()->json(HeroCard::findOrFail($id));
+        return response()->json(HeroCard::with('image')->findOrFail($id));
     }
 
     public function store(Request $request)
@@ -37,7 +37,7 @@ class HeroCardController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('herocards', 'public');
             $card->image()->create([
-                'file_path' => 'storage/' . $path
+                'file_path' => $path
             ]);
         }
 
@@ -65,7 +65,7 @@ class HeroCardController extends Controller
             $card->image()->updateOrCreate(
                 [],
                 [
-                    'file_path' => 'storage/' . $path
+                    'file_path' => $path
                 ]
             );
         }
